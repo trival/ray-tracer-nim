@@ -1,39 +1,54 @@
 import vec3
-import options
 import math
+import random
+
+# === Ray
 
 type
   Ray = object
     origin: Vec3
-    direction: Vec3
+    dir: Vec3
 
-  Sphere = object
-    pos: Vec3
-    radius: float
+func newRay *(origin: Vec3, direction: Vec3): Ray =
+  result.origin = origin
+  result.dir = direction
+  result.dir.normalize
 
-func normal *(sphere: Sphere, point: Vec3): Vec3 =
-  result = point - sphere.pos
-  result.normalize
+func at *(ray: Ray, t: float): Vec3 =
+  ray.origin + ray.dir * t
 
-func intersect*(sphere: Sphere, ray: Ray): Option[Vec3] =
-  let oc = ray.origin - sphere.pos
-  let a = ray.direction.dot ray.direction
-  let b = 2 * oc.dot(ray.direction)
-  let c = oc.dot(oc) - sphere.radius * sphere.radius
-  let discriminant = b * b - 4 * a * c
-  result =
-    if discriminant >= 0:
-      some((-b - discriminant.sqrt) / (2 * a) * ray.direction + ray.origin)
-    else:
-      none(Vec3)
+# === Sphere
 
 type
-  Camera = object
-    origin: Vec3
-    direction: Vec3
-    near: float
-    aspectRatio: float
-    resolution: (uint, uint)
+  Sphere = object
+    center: Vec3 = Vec3Zero
+    radius: float = 0.0
+
+func normalAt *(sphere: Sphere, point: Vec3): Vec3 =
+  result = point - sphere.center
+  result.normalize
+
+func intersect*(sphere: Sphere, ray: Ray): float =
+  let oc = ray.origin - sphere.center
+  let halfB = oc.dot ray.dir
+  let c = oc.lenSquare - sphere.radius * sphere.radius
+  let discriminant = halfB * halfB - c
+
+  result =
+    if discriminant >= 0.0:
+      let sqrtD = discriminant.sqrt
+      let t1 = -halfB - sqrtD
+      let t2 = -halfB + sqrtD
+
+      if t1 > 0.0 and t2 > 0.0:
+        if t1 < t2: t1 else: t2
+      elif t1 > 0.0: t1
+      else: t2
+
+    else:
+      -1.0
+
+# === Image
 
 type
   Image = object
@@ -48,6 +63,85 @@ func createImg*(width, height: uint): Image =
 
 func setPixel*(img: var Image, x, y: uint, color: Vec3) =
   img.data[y * img.width + x] = color
+
+# === Camera
+
+type
+  Camera = object
+    origin: Vec3
+    direction: Vec3
+    near: float
+    up = Vec3Y
+
+  SceneObject = tuple[sphere: Sphere, color: Vec3]
+
+  Scene = object
+    objects: seq[SceneObject]
+
+proc viewPortDirections* (cam: Camera): tuple[left: Vec3, up: Vec3] =
+  result.left = cam.direction.cross cam.up
+  if result.left.isNearZero:
+    echo "Warning: Camera direction and up vector are parallel"
+  result.up = cam.direction.cross result.left
+  result.left.normalize
+  result.up.normalize
+
+const minT = 0.001
+const maxT = 1e9
+
+proc closestObject* (scene: Scene, ray: Ray): (float, SceneObject) =
+  var closest = maxT
+  var closestObj: SceneObject = (Sphere(), Vec3Zero)
+
+  for obj in scene.objects:
+    let t = obj.sphere.intersect ray
+    if t > minT and t < closest:
+      closest = t
+      closestObj = obj
+
+  result = (closest, closestObj)
+
+proc rayColor*(ray: Ray, scene: Scene, depth: int): Vec3 =
+  let (t, obj) = scene.closestObject ray
+
+  if t < maxT and t > minT:
+    let t = 0.5 * (ray.dir.y + 1.0)
+    let col1 = vec3 1.0
+    let col2 = vec3(0.5, 0.7, 1.0)
+    return col1.lerp(col2, t)
+
+  if depth <= 0:
+    return vec3 0.0
+
+  let hitNormal = obj.sphere.normalAt(ray.at t)
+  var scatterDir = hitNormal + randVecInUnitSphere()
+  if scatterDir.isNearZero:
+    scatterDir = hitNormal
+
+  let scattered = newRay(ray.at t, scatterDir)
+  return obj.color * rayColor(scattered, scene, depth - 1)
+
+proc render* (cam: Camera, scene: Scene, imgWidth: uint, imgHeight: uint, raysPerPixel: uint = 100, maxBounces: int = 5): Image =
+  var img = createImg(imgWidth, imgHeight)
+  let height = imgHeight.float / imgWidth.float
+
+  let pixelWidth = 1.0 / imgWidth.float
+  let pixelHeight = height / imgHeight.float
+
+  let viewPortCenter = cam.origin + cam.direction * cam.near
+  let (viewPortU, viewPortV) = cam.viewPortDirections
+
+  for y in 0..<img.height:
+    for x in 0..<img.width:
+      var color = vec3 0.0
+      for _ in 0..<raysPerPixel:
+        let pixelX = -0.5 + x.float * pixelWidth + rand(1.0) * pixelWidth
+        let pixelY = -0.5 + y.float * pixelHeight + rand(1.0) * pixelHeight
+        let rayDir = viewPortCenter + viewPortU * pixelX + viewPortV * pixelY - cam.origin
+        let r = newRay(cam.origin, rayDir)
+        color += rayColor(r, scene, maxBounces) / raysPerPixel.float
+      img.setPixel x, y, color
+  result = img
 
 func toPPM*(image: Image): string =
   var s = "P3\n"
@@ -68,8 +162,10 @@ proc savePPM*(img: Image, filename: string) =
   writeFile filename, img.toPPM
 
 when isMainModule:
-  var img = createImg(256, 256)
-  for y in 0..<img.height:
-    for x in 0..<img.width:
-      img.setPixel(x, y, [x.float / img.width.float, y.float / img.height.float, 0.5])
+  let scene = Scene(objects: @[
+    (Sphere(center: vec3(0.0), radius: 0.5), vec3(0.8, 0.3, 0.3)),
+    (Sphere(center: vec3(0.0, -100.5, 0.0), radius: 100.0), vec3(0.5, 0.5, 0.5)),
+  ])
+  let cam = Camera(origin: vec3(0.0, 0.0, 1.0), direction: vec3(0.0, 0.0, -1.0), near: 0.0)
+  let img = cam.render(scene, 200, 150, 50, 5)
   img.savePPM("output.ppm")
