@@ -134,7 +134,7 @@ proc rayColor* (ray: Ray, scene: Scene, depth: int): Vec3 =
   let hitNormal = obj.sphere.normalAt(ray.at t)
   let reflectedRay = ray.dir.reflect hitNormal
 
-  var scatterDir = reflectedRay + randVecInUnitSphere() * 1.5
+  var scatterDir = reflectedRay + randVecUnit() * 0.6
   if scatterDir.isNearZero:
     scatterDir = reflectedRay
 
@@ -171,5 +171,5 @@ when isMainModule:
     (Sphere(center: vec3(0.0, -100.5, 0.0), radius: 100.0), vec3(0.5, 0.5, 0.5)),
   ])
   let cam = Camera(origin: vec3(0.0, 0.0, 3.0), direction: vec3(0.0, 0.0, -1.0), near: 0.7)
-  let img = cam.render(scene, 300, 200, 50, 5)
+  let img = cam.render(scene, 300, 200, 100, 10)
   img.savePPM("output.ppm")
