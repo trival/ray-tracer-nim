@@ -132,11 +132,11 @@ func cross* (a, b: Vec3): Vec3 =
   result[1] = a[2] * b[0] - a[0] * b[2]
   result[2] = a[0] * b[1] - a[1] * b[0]
 
-func lenSquare* (a: Vec3): float =
+func lenSquared* (a: Vec3): float =
   a.dot a
 
 func len* (a: Vec3): float =
-  a.lenSquare.sqrt
+  a.lenSquared.sqrt
 
 func normal* (a: Vec3): Vec3 =
   a / a.len
@@ -146,10 +146,13 @@ func normalize* (a: var Vec3): void =
 
 func isNearZero* (a: Vec3): bool =
   const s = 1e-8
-  result = a.lenSquare < s
+  result = a.lenSquared < s
 
 func lerp* (a, b: Vec3, t: float): Vec3 =
   a * (1.0 - t) + b * t
+
+func reflect* (v, n: Vec3): Vec3 =
+  v - n * (v.dot(n) * 2.0)
 
 proc randVec* (max = 1.0): Vec3 =
   [rand(max), rand(max), rand(max)]
@@ -157,7 +160,7 @@ proc randVec* (max = 1.0): Vec3 =
 proc randVecInUnitSphere* (): Vec3 =
   while true:
     let p = randVec(2.0) - 1.0
-    if p.lenSquare < 1.0:
+    if p.lenSquared < 1.0:
       return p
 
 proc randVecInHemisphere* (normal: Vec3): Vec3 =
