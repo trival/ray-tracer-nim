@@ -95,6 +95,7 @@ type
   Scene = object
     objects: seq[SceneObject]
 
+
 proc viewPortDirections* (cam: Camera): tuple[left: Vec3, up: Vec3] =
   result.left = cam.direction.cross cam.up
   if result.left.isNearZero:
@@ -103,6 +104,7 @@ proc viewPortDirections* (cam: Camera): tuple[left: Vec3, up: Vec3] =
   result.up = cam.direction.cross result.left
   result.left.normalize
   result.up.normalize
+
 
 const minT = 0.0001
 const maxT = 1e9
@@ -118,6 +120,7 @@ proc closestObject* (scene: Scene, ray: Ray): (float, SceneObject) =
       closestObj = obj
 
   result = (closest, closestObj)
+
 
 proc rayColor* (ray: Ray, scene: Scene, depth: int): Vec3 =
   let (t, obj) = scene.closestObject ray
@@ -141,6 +144,7 @@ proc rayColor* (ray: Ray, scene: Scene, depth: int): Vec3 =
   let scattered = newRay(ray.at t, scatterDir)
   return obj.color * rayColor(scattered, scene, depth - 1)
 
+
 proc render* (cam: Camera, scene: Scene, imgWidth: int, imgHeight: int, raysPerPixel: int = 100, maxBounces: int = 5): Image =
   var img = newImg(imgWidth, imgHeight)
   let height = imgHeight / imgWidth
@@ -163,6 +167,7 @@ proc render* (cam: Camera, scene: Scene, imgWidth: int, imgHeight: int, raysPerP
       img.setPixel x, y, color
   result = img
 
+
 when isMainModule:
   let scene = Scene(objects: @[
     (Sphere(center: vec3(0.0), radius: 0.5), vec3(0.8, 0.3, 0.3)),
@@ -171,5 +176,5 @@ when isMainModule:
     (Sphere(center: vec3(0.0, -100.5, 0.0), radius: 100.0), vec3(0.5, 0.5, 0.5)),
   ])
   let cam = Camera(origin: vec3(0.0, 0.0, 3.0), direction: vec3(0.0, 0.0, -1.0), near: 0.7)
-  let img = cam.render(scene, 300, 200, 100, 10)
+  let img = cam.render(scene, 300, 200, 200, 50)
   img.savePPM("out/output.ppm")
