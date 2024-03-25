@@ -1,6 +1,6 @@
 import vec3
 import math
-import random
+import utils
 
 # === Ray
 
@@ -172,4 +172,4 @@ when isMainModule:
   ])
   let cam = Camera(origin: vec3(0.0, 0.0, 3.0), direction: vec3(0.0, 0.0, -1.0), near: 0.7)
   let img = cam.render(scene, 300, 200, 100, 10)
-  img.savePPM("output.ppm")
+  img.savePPM("out/output.ppm")

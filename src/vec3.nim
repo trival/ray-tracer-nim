@@ -1,5 +1,5 @@
 import math
-import random
+import utils
 
 type
   Vec3* = array[3, float]
@@ -98,7 +98,6 @@ func `*=`* (a: var Vec3, b: float): void =
 func `-`* (a: Vec3): Vec3 =
   a * (-1.0)
 
-
 func `/`* (a, b: Vec3): Vec3 =
   result[0] = a[0] / b[0]
   result[1] = a[1] / b[1]
@@ -164,11 +163,9 @@ proc randVecInUnitSphere* (): Vec3 =
       return p
 
 proc randVecInHemisphere* (normal: Vec3): Vec3 =
-  let inUnitSphere = randVecInUnitSphere()
-  if inUnitSphere.dot(normal) < 0.0:
-    -inUnitSphere
-  else:
-    inUnitSphere
+  result = randVecInUnitSphere()
+  if result.dot(normal) < 0.0:
+    result *= -1.0
 
 proc randVecUnit* (): Vec3 =
   result = randVecInUnitSphere()
