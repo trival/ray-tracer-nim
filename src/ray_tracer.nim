@@ -9,12 +9,12 @@ type
     origin: Vec3
     dir: Vec3
 
-func newRay *(origin: Vec3, direction: Vec3): Ray =
+func newRay* (origin: Vec3, direction: Vec3): Ray =
   result.origin = origin
   result.dir = direction
   result.dir.normalize
 
-func at *(ray: Ray, t: float): Vec3 =
+func at* (ray: Ray, t: float): Vec3 =
   ray.origin + ray.dir * t
 
 # === Sphere
@@ -24,28 +24,28 @@ type
     center: Vec3 = Vec3Zero
     radius: float = 0.0
 
-func normalAt *(sphere: Sphere, point: Vec3): Vec3 =
+func normalAt* (sphere: Sphere, point: Vec3): Vec3 =
   result = point - sphere.center
   result.normalize
 
-func intersect*(sphere: Sphere, ray: Ray): float =
+func intersect* (sphere: Sphere, ray: Ray): float =
   let oc = ray.origin - sphere.center
   let halfB = oc.dot ray.dir
   let c = oc.lenSquared - sphere.radius * sphere.radius
   let discriminant = halfB * halfB - c
 
-  if discriminant >= 0.0:
-    let sqrtD = discriminant.sqrt
-    let t1 = -halfB - sqrtD
-    let t2 = -halfB + sqrtD
+  if discriminant < 0.0:
+    return -1.0
 
-    if t1 > 0.0 and t2 > 0.0:
-      if t1 < t2: t1 else: t2
-    elif t1 > 0.0: t1
-    else: t2
+  let sqrtD = discriminant.sqrt
+  let t1 = -halfB - sqrtD
+  let t2 = -halfB + sqrtD
 
-  else:
-    -1.0
+  if t1 > 0.0 and t2 > 0.0:
+    if t1 < t2: t1 else: t2
+  elif t1 > 0.0: t1
+  else: t2
+
 
 # === Image
 
@@ -96,14 +96,14 @@ type
     objects: seq[SceneObject]
 
 
-proc viewPortDirections* (cam: Camera): tuple[left: Vec3, up: Vec3] =
-  result.left = cam.direction.cross cam.up
-  if result.left.isNearZero:
+proc viewPortDirections* (cam: Camera): tuple[u: Vec3, v: Vec3] =
+  result.u = cam.direction.cross cam.up
+  if result.u.isNearZero:
     echo "Warning: Camera direction and up vector are parallel"
     return (Vec3Zero, Vec3Zero)
-  result.up = cam.direction.cross result.left
-  result.left.normalize
-  result.up.normalize
+  result.v = cam.direction.cross result.u
+  result.u.normalize
+  result.v.normalize
 
 
 const minT = 0.0001
