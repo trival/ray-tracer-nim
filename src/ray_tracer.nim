@@ -78,8 +78,6 @@ func toPPM* (image: Image): string =
     s.add "\n"
   result = s
 
-proc savePPM* (img: Image, filename: string) =
-  writeFile filename, img.toPPM
 
 # === Camera
 
@@ -106,16 +104,16 @@ proc viewPortDirections* (cam: Camera): tuple[u: Vec3, v: Vec3] =
   result.v.normalize
 
 
-const minT = 0.0001
-const maxT = 1e9
+const MIN_T = 0.0001
+const MAX_T = 1e9
 
 proc closestObject* (scene: Scene, ray: Ray): (float, SceneObject) =
-  var closest = maxT
+  var closest = MAX_T
   var closestObj: SceneObject = (Sphere(), Vec3Zero)
 
   for obj in scene.objects:
     let t = obj.sphere.intersect ray
-    if t > minT and t < closest:
+    if t > MIN_T and t < closest:
       closest = t
       closestObj = obj
 
@@ -123,16 +121,16 @@ proc closestObject* (scene: Scene, ray: Ray): (float, SceneObject) =
 
 
 proc rayColor* (ray: Ray, scene: Scene, depth: int): Vec3 =
+  if depth == 0:
+    return vec3 0.0
+
   let (t, obj) = scene.closestObject ray
 
-  if t <= minT or t >= maxT:
+  if t <= MIN_T or t >= MAX_T:
     let t = 0.5 * (ray.dir.y + 1.0)
     let col1 = vec3 1.0
     let col2 = vec3(0.5, 0.7, 1.0)
     return col1.lerp(col2, t)
-
-  if depth <= 0:
-    return vec3 0.0
 
   let hitNormal = obj.sphere.normalAt(ray.at t)
   let reflectedRay = ray.dir.reflect hitNormal
@@ -177,4 +175,5 @@ when isMainModule:
   ])
   let cam = Camera(origin: vec3(0.0, 0.0, 3.0), direction: vec3(0.0, 0.0, -1.0), near: 0.7)
   let img = cam.render(scene, 300, 200, 200, 50)
-  img.savePPM("out/output.ppm")
+
+  echo img.toPPM
